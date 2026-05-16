@@ -293,8 +293,6 @@ class Command(BaseCommand):
                 status='irrigating',
                 started_by=user,
             )
-            field.is_irrigating = True
-            field.save(update_fields=['is_irrigating'])
         self.stdout.write(f"  OK {len(active_fields)} ta dala aktiv sug'orish holatida")
 
     def _create_extra_alerts(self, fields, sensors):
