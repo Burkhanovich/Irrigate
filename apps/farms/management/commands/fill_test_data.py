@@ -278,7 +278,7 @@ class Command(BaseCommand):
 
         # Get a couple of extra fields from DB too
         active_fields = list(FField.objects.exclude(
-            irrigation_events__status='irrigating'
+            events__status='irrigating'
         ).order_by('?')[:3])
 
         for field in active_fields:
