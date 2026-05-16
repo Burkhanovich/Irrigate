@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — IrriGate{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'sensor-list' field.pk %}">Sensorlar</a> / {{ title }}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h4 class="mb-0"><i class="bi bi-cpu me-2 text-success"></i>{{ title }}</h4>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Device ID <span class="text-danger">*</span></label>
+                            {{ form.device_id }}
+                            {% if form.device_id.errors %}<div class="text-danger small mt-1">{{ form.device_id.errors.0 }}</div>{% endif %}
+                            <div class="form-text">Faqat harflar, raqamlar va _ belgi</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Sensor nomi</label>
+                            {{ form.name }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Sensor turi <span class="text-danger">*</span></label>
+                        {{ form.sensor_type }}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">O'lchov birligi</label>
+                            {{ form.unit }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Firmware versiyasi</label>
+                            {{ form.firmware_ver }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Pastki chegara</label>
+                            {{ form.low_threshold }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Yuqori chegara</label>
+                            {{ form.high_threshold }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Kenglik (Lat)</label>
+                            {{ form.lat }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Uzunlik (Lon)</label>
+                            {{ form.lon }}
+                        </div>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-2"></i>Saqlash
+                        </button>
+                        <a href="{% url 'sensor-list' field.pk %}" class="btn btn-outline-secondary">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

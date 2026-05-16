@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ farm.name }} — IrriGate{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'farm-list' %}">Fermalar</a>
+<span class="sep">/</span>{{ farm.name }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.field-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s;
+}
+.field-row:last-child { border-bottom: none; }
+.field-row:hover { background: #f8fafc; }
+.irr-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(37,99,235,0.1); color: #1d4ed8;
+    padding: 0.25em 0.65em; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 600;
+    animation: pulse-blue 2s infinite;
+}
+@keyframes pulse-blue {
+    0%,100% { opacity:1; }
+    50% { opacity:0.7; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-tree me-2 text-success"></i>{{ farm.name }}</h4>
+        <div class="text-muted" style="font-size:0.82rem;">
+            <i class="bi bi-geo-alt me-1"></i>{{ farm.get_region_display }}, {{ farm.district }}
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'farm-update' farm.pk %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Tahrirlash
+        </a>
+        <a href="{% url 'field-create' farm.pk %}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Dala qo'shish
+        </a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card text-center p-3">
+            <div class="fs-3 fw-bold text-success">{{ farm.total_area }}</div>
+            <div class="text-label">Jami maydon (ga)</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card text-center p-3">
+            <div class="fs-3 fw-bold text-primary">{{ farm.total_fields }}</div>
+            <div class="text-label">Dalalar soni</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card text-center p-3">
+            <div class="fs-3 fw-bold" style="color:#f59e0b;">{{ farm.created_at|date:"d.m.Y" }}</div>
+            <div class="text-label">Yaratilgan</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card text-center p-3">
+            {% with irrigating=farm.fields.all %}
+            {% with count=0 %}
+            <div class="fs-3 fw-bold text-info">{{ farm.total_fields }}</div>
+            <div class="text-label">Faol dalalar</div>
+            {% endwith %}
+            {% endwith %}
+        </div>
+    </div>
+</div>
+
+{% if farm.description %}
+<div class="card mb-4" style="background:#f8fafc;">
+    <div class="card-body py-3 px-4">
+        <div class="text-label mb-1">Tavsif</div>
+        <p class="mb-0 text-muted" style="font-size:0.875rem;">{{ farm.description }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Fields table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="section-title fw-semibold" style="font-size:0.875rem;color:#374151;">
+            <i class="bi bi-grid me-2 text-success"></i>Dalalar
+        </span>
+        <a href="{% url 'field-create' farm.pk %}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Yangi dala
+        </a>
+    </div>
+    {% if fields %}
+    <div class="card-body p-0">
+        {% for field in fields %}
+        <div class="field-row">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:38px;height:38px;border-radius:10px;background:{% if field.is_irrigating %}rgba(37,99,235,0.1){% else %}#f1f5f9{% endif %};display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
+                    {% if field.is_irrigating %}
+                    <i class="bi bi-droplet-fill text-primary"></i>
+                    {% else %}
+                    <i class="bi bi-sun text-warning"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <div class="fw-semibold" style="font-size:0.875rem;">{{ field.name }}</div>
+                    <div class="text-muted" style="font-size:0.75rem;">{{ field.get_crop_type_display }} · {{ field.area }} ga · {{ field.get_irr_method_display }}</div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                {% with m=field.current_moisture %}
+                {% if m %}
+                <div class="text-end d-none d-sm-block">
+                    <div style="font-size:0.8rem;font-weight:600;color:#16a34a;">{{ m }}%</div>
+                    <div style="width:60px;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;">
+                        <div style="width:{{ m }}%;height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:2px;"></div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
+                {% if field.is_irrigating %}
+                <span class="irr-badge"><i class="bi bi-droplet-fill"></i>Sug'orish</span>
+                {% elif field.is_active %}
+                <span class="badge" style="background:#f0fdf4;color:#16a34a;">Faol</span>
+                {% else %}
+                <span class="badge bg-light text-muted">Nofaol</span>
+                {% endif %}
+                <div class="d-flex gap-1">
+                    <a href="{% url 'field-monitoring' field.pk %}" class="btn btn-sm btn-outline-success" title="Monitoring">
+                        <i class="bi bi-activity"></i>
+                    </a>
+                    <a href="{% url 'field-detail' field.pk %}" class="btn btn-sm btn-outline-secondary" title="Tafsilot">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-grid empty-icon"></i>
+        <h6 class="text-muted">Hali dala qo'shilmagan</h6>
+        <p>Ushbu fermaga dala qo'shing</p>
+        <a href="{% url 'field-create' farm.pk %}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Dala qo'shish
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

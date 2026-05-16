@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Hisobotlar — IrriGate{% endblock %}
+{% block breadcrumb %}Hisobotlar{% endblock %}
+
+{% block extra_css %}
+<style>
+.filter-card { background: #fff; border-radius: 12px!important; }
+.stat-box {
+    text-align: center; padding: 1.5rem;
+    border-radius: 12px;
+}
+.stat-box .val { font-size: 2rem; font-weight: 700; line-height: 1; }
+.stat-box .lbl { font-size: 0.75rem; color: #94a3b8; margin-top: 0.3rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h4 class="mb-0"><i class="bi bi-bar-chart-line me-2 text-success"></i>Hisobotlar</h4>
+</div>
+
+<!-- Filters -->
+<div class="card filter-card mb-4">
+    <div class="card-body p-4">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Dala</label>
+                <select name="field_id" class="form-select">
+                    <option value="">Barcha dalalar</option>
+                    {% for field in fields %}
+                    <option value="{{ field.pk }}"
+                        {% if request.GET.field_id == field.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ field.farm.name }} — {{ field.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Boshlanish sanasi</label>
+                <input type="date" name="from_date" class="form-control" value="{{ request.GET.from_date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tugash sanasi</label>
+                <input type="date" name="to_date" class="form-control" value="{{ request.GET.to_date }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-search me-1"></i>Ko'rish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card stat-box">
+            <div class="val text-success">{{ total_events }}</div>
+            <div class="lbl">Jami sug'orish</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-box">
+            <div class="val text-info">{{ total_water|floatformat:0 }}</div>
+            <div class="lbl">Sarflangan suv (litr)</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card stat-box">
+            <div class="val text-primary">
+                {% if total_events > 0 %}
+                    {{ total_water|floatformat:0 }}
+                {% else %}0{% endif %}
+            </div>
+            <div class="lbl">O'rtacha suv / sug'orish</div>
+        </div>
+    </div>
+</div>
+
+<!-- Events table -->
+<div class="card">
+    <div class="card-header">
+        <span class="fw-semibold" style="font-size:0.875rem;">Sug'orish hodisalari</span>
+    </div>
+    {% if events %}
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Sana</th>
+                        <th>Dala</th>
+                        <th>Ferma</th>
+                        <th>Sabab</th>
+                        <th>Davomiylik</th>
+                        <th>Suv (L)</th>
+                        <th>Holat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr>
+                        <td>{{ event.started_at|date:"d.m.Y H:i" }}</td>
+                        <td class="fw-semibold">{{ event.field.name }}</td>
+                        <td class="text-muted">{{ event.field.farm.name }}</td>
+                        <td>{{ event.get_trigger_type_display }}</td>
+                        <td>{{ event.duration_display }}</td>
+                        <td>
+                            {% if event.water_liters %}
+                            <span class="text-info fw-semibold">{{ event.water_liters|floatformat:0 }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if event.status == 'completed' %}bg-success
+                                {% elif event.status == 'running' %}gc-blue
+                                {% elif event.status == 'stopped' %}bg-warning text-dark
+                                {% else %}bg-danger{% endif %}"
+                                style="border-radius:20px;font-size:0.7rem;">
+                                {{ event.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-bar-chart-line empty-icon"></i>
+        <h6 class="text-muted">Ma'lumot topilmadi</h6>
+        <p>Tanlangan mezonlar bo'yicha sug'orish hodisalari yo'q</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

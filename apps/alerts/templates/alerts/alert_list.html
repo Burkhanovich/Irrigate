@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Ogohlantirishlar — IrriGate{% endblock %}
+{% block breadcrumb %}Ogohlantirishlar{% endblock %}
+
+{% block extra_css %}
+<style>
+.alert-card {
+    border-radius: 10px;
+    margin-bottom: 0.625rem;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    transition: box-shadow 0.15s;
+}
+.alert-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07) !important; }
+.alert-card.critical { border-left: 4px solid #ef4444 !important; }
+.alert-card.warning  { border-left: 4px solid #f59e0b !important; }
+.alert-card.info     { border-left: 4px solid #3b82f6 !important; }
+.alert-card.resolved { opacity: 0.6; }
+.sev-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px;
+}
+.nav-tabs .nav-link {
+    font-size: 0.85rem; font-weight: 500; color: #64748b;
+    border: none; border-bottom: 2px solid transparent;
+    padding: 0.5rem 1rem; border-radius: 0;
+}
+.nav-tabs .nav-link.active { color: #16a34a; border-bottom-color: #16a34a; background: transparent; }
+.nav-tabs .nav-link:hover { color: #374151; }
+.nav-tabs { border-bottom: 1px solid #e2e8f0; margin-bottom: 1.25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-bell me-2 text-warning"></i>Ogohlantirishlar</h4>
+        <div class="text-muted" style="font-size:0.82rem;">{{ alerts.count }} ta natija</div>
+    </div>
+    {% if filter_type == 'unresolved' and alerts %}
+    <form method="post" action="{% url 'alert-resolve-all' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-check-all me-1"></i>Barchasini yopish
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link {% if filter_type == 'unresolved' or not filter_type %}active{% endif %}" href="?filter=unresolved">
+            <i class="bi bi-dot me-1 text-danger"></i>Ochiq
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if filter_type == 'all' %}active{% endif %}" href="?filter=all">
+            Barchasi
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if filter_type == 'resolved' %}active{% endif %}" href="?filter=resolved">
+            <i class="bi bi-check2 me-1 text-success"></i>Yopilgan
+        </a>
+    </li>
+</ul>
+
+{% if alerts %}
+<div>
+    {% for alert in alerts %}
+    <div class="alert-card card {{ alert.severity }} {% if alert.is_resolved %}resolved{% endif %}">
+        <div class="card-body py-3 px-4">
+            <div class="d-flex align-items-start gap-3">
+                <!-- Severity dot -->
+                <div class="sev-dot
+                    {% if alert.severity == 'critical' %}bg-danger
+                    {% elif alert.severity == 'warning' %}bg-warning
+                    {% else %}bg-info{% endif %}">
+                </div>
+
+                <!-- Content -->
+                <div class="flex-fill min-width-0">
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <span class="fw-semibold" style="font-size:0.875rem;">{{ alert.field.name }}</span>
+                        <span class="badge
+                            {% if alert.severity == 'critical' %}bg-danger
+                            {% elif alert.severity == 'warning' %}bg-warning text-dark
+                            {% else %}bg-info{% endif %}"
+                            style="border-radius:20px;font-size:0.68rem;">
+                            {{ alert.get_severity_display }}
+                        </span>
+                        {% if alert.is_resolved %}
+                        <span class="badge bg-light text-muted" style="border-radius:20px;font-size:0.68rem;">
+                            <i class="bi bi-check2 me-1"></i>Yopilgan
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.845rem;color:#374151;">{{ alert.message }}</div>
+                    <div class="d-flex align-items-center gap-2 mt-1" style="font-size:0.72rem;color:#94a3b8;">
+                        <span><i class="bi bi-clock me-1"></i>{{ alert.created_at|date:"d.m.Y H:i" }}</span>
+                        {% if alert.sensor %}
+                        <span>&bull;</span>
+                        <span><i class="bi bi-cpu me-1"></i>{{ alert.sensor.device_id }}</span>
+                        {% endif %}
+                        {% if alert.is_resolved and alert.resolved_at %}
+                        <span>&bull;</span>
+                        <span><i class="bi bi-check2 me-1 text-success"></i>{{ alert.resolved_at|date:"d.m H:i" }} da yopildi</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Action -->
+                {% if not alert.is_resolved %}
+                <form method="post" action="{% url 'alert-resolve' alert.pk %}" class="flex-shrink-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-success" title="Yopish"
+                            style="border-radius:8px;">
+                        <i class="bi bi-check-lg me-1"></i>Yopish
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="card border-0">
+    <div class="empty-state" style="padding:5rem 2rem;">
+        <div style="width:72px;height:72px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:2rem;">
+            <i class="bi bi-check-circle-fill text-success"></i>
+        </div>
+        <h5 class="fw-semibold" style="color:#374151;">Hech qanday ogohlantirish yo'q</h5>
+        <p class="text-muted">Barcha ogohlantirishlar hal qilindi — tizim normal ishlayapti</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+{% block title %}Boshqaruv — {{ field.name }}{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'field-detail' field.pk %}">{{ field.name }}</a>
+<span class="sep">/</span>Boshqaruv paneli
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-circle {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto;
+}
+.status-circle.active {
+    background: rgba(22,163,74,0.1);
+    border: 3px solid rgba(22,163,74,0.3);
+}
+.status-circle.inactive {
+    background: #f8fafc;
+    border: 3px solid #e2e8f0;
+}
+.schedule-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.schedule-item:last-child { border-bottom: none; }
+.event-row td { font-size: 0.82rem !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h4 class="mb-0"><i class="bi bi-sliders me-2 text-success"></i>{{ field.name }} — Boshqaruv</h4>
+    <a href="{% url 'event-history' field.pk %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-clock-history me-1"></i>Tarix
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Status + Manual control -->
+    <div class="col-md-5 col-lg-4">
+
+        <!-- Irrigation status card -->
+        <div class="card mb-3 {% if active_event %}gc-green{% endif %}" style="{% if active_event %}border:none!important;{% endif %}">
+            <div class="card-body text-center p-4">
+                {% if active_event %}
+                <div class="status-circle active irrigating-pulse" style="background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3);">
+                    <i class="bi bi-droplet-fill text-white"></i>
+                </div>
+                <h5 class="mt-3 fw-bold text-white mb-1">Sug'orilmoqda</h5>
+                <p class="mb-1" style="color:rgba(255,255,255,0.75);font-size:0.82rem;">
+                    Boshlangan: <strong>{{ active_event.started_at|date:"H:i" }}</strong>
+                </p>
+                <p class="mb-4" id="elapsed-time" style="color:rgba(255,255,255,0.75);font-size:0.82rem;">
+                    O'tgan: <strong>—</strong>
+                </p>
+                <form method="post" action="{% url 'stop-irrigation' active_event.pk %}" id="stopForm">
+                    {% csrf_token %}
+                    <button type="submit" id="stop-btn" class="btn btn-lg w-100"
+                            style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:#fff;font-weight:600;border-radius:10px;">
+                        <i class="bi bi-stop-circle me-2"></i>To'xtatish
+                    </button>
+                </form>
+                {% else %}
+                <div class="status-circle inactive">
+                    <i class="bi bi-droplet text-muted"></i>
+                </div>
+                <h5 class="mt-3 text-muted">Sug'orish to'xtatilgan</h5>
+                <p class="text-muted mb-0" style="font-size:0.82rem;">Qo'lda yoki jadval orqali boshlang</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Manual irrigation -->
+        {% if not active_event %}
+        <div class="card">
+            <div class="card-header">
+                <span class="fw-semibold" style="font-size:0.875rem;">
+                    <i class="bi bi-hand-index me-2 text-success"></i>Qo'lda sug'orish
+                </span>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <label class="form-label">Davomiyligi</label>
+                    <div class="input-group">
+                        <input type="number" id="duration" class="form-control" value="30" min="1" max="480" style="border-radius:8px 0 0 8px!important;">
+                        <span class="input-group-text" style="background:#f8fafc;border-color:#e2e8f0;font-size:0.85rem;">daqiqa</span>
+                    </div>
+                    <!-- Quick presets -->
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-sm btn-light flex-fill preset-btn" data-val="15">15 min</button>
+                        <button class="btn btn-sm btn-light flex-fill preset-btn" data-val="30">30 min</button>
+                        <button class="btn btn-sm btn-light flex-fill preset-btn" data-val="60">1 soat</button>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Izoh <span class="fw-normal text-muted">(ixtiyoriy)</span></label>
+                    <textarea id="notes" class="form-control" rows="2" placeholder="Qo'shimcha izoh..."></textarea>
+                </div>
+                <button class="btn btn-success btn-lg w-100" id="start-btn">
+                    <i class="bi bi-play-circle me-2"></i>Sug'orishni boshlash
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right: Schedules + Events -->
+    <div class="col-md-7 col-lg-8">
+        <!-- Schedules -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold" style="font-size:0.875rem;">
+                    <i class="bi bi-clock me-2 text-primary"></i>Jadvallar
+                </span>
+                <a href="{% url 'schedule-create' field.pk %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>Jadval qo'shish
+                </a>
+            </div>
+            {% if schedules %}
+            <div class="card-body p-0">
+                {% for schedule in schedules %}
+                <div class="schedule-item">
+                    <div>
+                        <div class="fw-semibold" style="font-size:0.875rem;">{{ schedule.name }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">
+                            {{ schedule.get_trigger_type_display }}
+                            {% if schedule.start_time %} · {{ schedule.start_time|time:"H:i" }}{% endif %}
+                            · {{ schedule.duration_min }} min
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge {% if schedule.is_active %}bg-success{% else %}bg-light text-muted{% endif %}"
+                              style="border-radius:20px;font-size:0.7rem;">
+                            {% if schedule.is_active %}Faol{% else %}Nofaol{% endif %}
+                        </span>
+                        <button class="btn btn-sm toggle-btn"
+                                data-url="{% url 'schedule-toggle' schedule.pk %}"
+                                style="border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;padding:0.25rem 0.55rem;">
+                            <i class="bi bi-toggle-{% if schedule.is_active %}on text-success{% else %}off{% endif %} fs-5"></i>
+                        </button>
+                        <a href="{% url 'schedule-update' schedule.pk %}" class="btn btn-sm btn-outline-secondary" style="padding:0.25rem 0.55rem;">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state py-4">
+                <i class="bi bi-clock empty-icon" style="font-size:2rem;"></i>
+                <p>Faol jadval yo'q</p>
+                <a href="{% url 'schedule-create' field.pk %}" class="btn btn-success btn-sm">Jadval qo'shish</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent events -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold" style="font-size:0.875rem;">
+                    <i class="bi bi-clock-history me-2 text-muted"></i>So'nggi sug'orishlar
+                </span>
+                <a href="{% url 'event-history' field.pk %}" class="btn btn-sm btn-outline-secondary">Barchasi</a>
+            </div>
+            {% if recent_events %}
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Vaqt</th>
+                            <th>Sabab</th>
+                            <th>Davomiylik</th>
+                            <th>Holat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in recent_events %}
+                        <tr class="event-row">
+                            <td>{{ event.started_at|date:"d.m H:i" }}</td>
+                            <td>{{ event.get_trigger_type_display }}</td>
+                            <td>{{ event.duration_display }}</td>
+                            <td>
+                                <span class="badge
+                                    {% if event.status == 'running' %}gc-blue
+                                    {% elif event.status == 'completed' %}bg-success
+                                    {% else %}bg-light text-muted{% endif %}"
+                                    style="border-radius:20px;font-size:0.7rem;">
+                                    {{ event.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state py-3">
+                <p class="text-center mb-0" style="font-size:0.82rem;">Tarix yo'q</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const fieldId = {{ field.pk }};
+
+// Preset buttons
+document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('duration').value = this.dataset.val;
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('btn-success', 'text-white'));
+        this.classList.add('btn-success', 'text-white');
+    });
+});
+
+{% if not active_event %}
+document.getElementById('start-btn')?.addEventListener('click', async function() {
+    const duration = document.getElementById('duration').value;
+    const notes    = document.getElementById('notes').value;
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Boshlanmoqda...';
+
+    try {
+        const res = await fetch(`/irrigation/field/${fieldId}/start/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `duration_min=${duration}&notes=${encodeURIComponent(notes)}`
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            showToast("Sug'orish boshlandi!", 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast('Xatolik: ' + (data.error || 'Noma\'lum xato'), 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-circle me-2"></i>Sug\'orishni boshlash';
+        }
+    } catch(e) {
+        showToast('Tarmoq xatosi', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle me-2"></i>Sug\'orishni boshlash';
+    }
+});
+{% endif %}
+
+{% if active_event %}
+document.getElementById('stopForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('stop-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>To\'xtatilmoqda...'; }
+    const res = await fetch(this.action, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    const data = await res.json();
+    if (data.status === 'ok') {
+        showToast("Sug'orish to'xtatildi", 'success');
+        setTimeout(() => location.reload(), 1000);
+    }
+});
+
+const startedAt = new Date('{{ active_event.started_at.isoformat }}');
+setInterval(() => {
+    const diff = Math.floor((new Date() - startedAt) / 1000);
+    const h = Math.floor(diff/3600);
+    const m = Math.floor((diff%3600)/60);
+    const s = diff % 60;
+    const txt = h > 0
+        ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+        : `${m}:${String(s).padStart(2,'0')}`;
+    const el = document.getElementById('elapsed-time');
+    if (el) el.innerHTML = `O'tgan: <strong>${txt}</strong>`;
+}, 1000);
+{% endif %}
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const res = await fetch(this.dataset.url, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        const data = await res.json();
+        if (data.status === 'ok') location.reload();
+    });
+});
+</script>
+{% endblock %}

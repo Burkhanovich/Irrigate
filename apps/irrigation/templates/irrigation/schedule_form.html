@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Jadval — IrriGate{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'schedule-list' field.pk %}">Jadvallar</a> / Tahrirlash
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h4 class="mb-0"><i class="bi bi-clock me-2 text-success"></i>Sug'orish Jadvali</h4>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Jadval nomi <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ishga tushirish turi</label>
+                        {{ form.trigger_type }}
+                    </div>
+
+                    <div class="mb-3" id="time-fields">
+                        <label class="form-label fw-semibold">Boshlanish vaqti</label>
+                        {{ form.start_time }}
+                        {% if form.start_time.errors %}<div class="text-danger small mt-1">{{ form.start_time.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Hafta kunlari</label>
+                        <div class="d-flex flex-wrap gap-2 mt-1">
+                            {% for choice_val, choice_label in form.days_of_week.field.choices %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox"
+                                       name="days_of_week" value="{{ choice_val }}"
+                                       id="day_{{ choice_val }}"
+                                       {% if choice_val|stringformat:"s" in form.days_of_week.value %}checked{% endif %}>
+                                <label class="form-check-label" for="day_{{ choice_val }}">{{ choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Davomiyligi (daqiqa)</label>
+                        {{ form.duration_min }}
+                        {% if form.duration_min.errors %}<div class="text-danger small mt-1">{{ form.duration_min.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3" id="sensor-fields">
+                        <label class="form-label fw-semibold">Tuproq namligi chegarasi (%)</label>
+                        {{ form.soil_threshold }}
+                        <div class="form-text">Bu qiymatdan past bo'lganda avtomatik sug'orish boshlanadi</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Maqsadli namlik (%)</label>
+                        {{ form.target_moisture }}
+                    </div>
+
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="form-check">
+                            {{ form.is_active }}
+                            <label class="form-check-label">Faol</label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.pause_on_rain }}
+                            <label class="form-check-label">Yomg'irda to'xtatish</label>
+                        </div>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-2"></i>Saqlash
+                        </button>
+                        <a href="{% url 'schedule-list' field.pk %}" class="btn btn-outline-secondary">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

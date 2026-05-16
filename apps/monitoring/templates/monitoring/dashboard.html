@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — IrriGate{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+.kpi-card {
+    border-radius: 14px !important;
+    border: none !important;
+    overflow: hidden;
+    color: #fff;
+}
+.kpi-card .kpi-val { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+.kpi-card .kpi-label { font-size: 0.78rem; opacity: 0.8; margin-top: 0.15rem; }
+.kpi-card .kpi-icon {
+    font-size: 2.5rem; opacity: 0.2;
+    position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%);
+}
+.farm-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    text-decoration: none; color: inherit;
+    transition: background 0.15s;
+}
+.farm-item:last-child { border-bottom: none; }
+.farm-item:hover { background: #f8fafc; }
+.moisture-bar {
+    height: 5px; border-radius: 3px;
+    background: #e2e8f0; width: 80px; overflow: hidden;
+}
+.moisture-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg,#16a34a,#4ade80); }
+.alert-item {
+    display: flex; gap: 0.75rem; align-items: flex-start;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.alert-item:last-child { border-bottom: none; }
+.alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.section-title {
+    font-size: 0.85rem; font-weight: 600; color: #374151;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- KPI Row -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card gc-green stat-card position-relative" style="box-shadow:0 4px 20px rgba(22,163,74,0.3)!important;">
+            <div class="card-body p-4">
+                <i class="bi bi-layers kpi-icon"></i>
+                <div class="kpi-val">{{ farms.count }}</div>
+                <div class="kpi-label">Jami fermalar</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card gc-blue stat-card position-relative" style="box-shadow:0 4px 20px rgba(29,78,216,0.3)!important;">
+            <div class="card-body p-4">
+                <i class="bi bi-droplet-fill kpi-icon"></i>
+                <div class="kpi-val">{{ active_events.count }}</div>
+                <div class="kpi-label">Hozir sug'orilmoqda</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card gc-amber stat-card position-relative" style="box-shadow:0 4px 20px rgba(180,83,9,0.25)!important;">
+            <div class="card-body p-4">
+                <i class="bi bi-water kpi-icon"></i>
+                <div class="kpi-val">{{ total_water_today|floatformat:0 }}</div>
+                <div class="kpi-label">Bugungi suv sarfi (L)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card kpi-card gc-red stat-card position-relative" style="box-shadow:0 4px 20px rgba(185,28,28,0.25)!important;">
+            <div class="card-body p-4">
+                <i class="bi bi-bell kpi-icon"></i>
+                <div class="kpi-val">{{ recent_alerts.count }}</div>
+                <div class="kpi-label">Ochiq ogohlantirishlar</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Map -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="section-title"><i class="bi bi-map me-2 text-success"></i>Ferma xaritasi</span>
+                <a href="{% url 'farm-list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-right me-1"></i>Barchasi
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div id="dashboard-map" style="height:380px;border-radius:0 0 12px 12px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar panel -->
+    <div class="col-lg-4 d-flex flex-column gap-3">
+        {% if active_events %}
+        <div class="card" style="border-left: 3px solid #2563eb !important;">
+            <div class="card-header">
+                <span class="section-title text-primary"><i class="bi bi-droplet-fill me-2"></i>Sug'orilmoqda</span>
+            </div>
+            <div class="card-body p-0">
+                {% for event in active_events %}
+                <div class="farm-item">
+                    <div>
+                        <div class="fw-semibold" style="font-size:0.875rem;">{{ event.field.name }}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">{{ event.field.farm.name }} · {{ event.started_at|date:"H:i" }} dan</div>
+                    </div>
+                    <a href="{% url 'control-panel' event.field.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-sliders"></i>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Alerts -->
+        <div class="card flex-fill">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="section-title"><i class="bi bi-bell me-2 text-warning"></i>Ogohlantirishlar</span>
+                <a href="{% url 'alert-list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-right me-1"></i>Barchasi
+                </a>
+            </div>
+            {% if recent_alerts %}
+            <div class="card-body p-0">
+                {% for alert in recent_alerts|slice:":5" %}
+                <div class="alert-item">
+                    <div class="alert-dot mt-1
+                        {% if alert.severity == 'critical' %}bg-danger
+                        {% elif alert.severity == 'warning' %}bg-warning
+                        {% else %}bg-info{% endif %}">
+                    </div>
+                    <div style="min-width:0;">
+                        <div class="fw-semibold text-truncate" style="font-size:0.82rem;">{{ alert.field.name }}</div>
+                        <div class="text-muted text-truncate" style="font-size:0.75rem;">{{ alert.message|truncatechars:55 }}</div>
+                        <div style="font-size:0.7rem;color:#cbd5e1;margin-top:2px;">{{ alert.created_at|date:"d.m H:i" }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state py-4">
+                <i class="bi bi-check-circle text-success" style="font-size:2rem;opacity:0.7;display:block;text-align:center;margin-bottom:0.5rem;"></i>
+                <p class="text-center mb-0" style="font-size:0.82rem;">Barcha ogohlantirishlar hal qilindi</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Farm cards -->
+{% if farms %}
+<div class="mb-2 d-flex align-items-center justify-content-between">
+    <h6 class="mb-0 fw-semibold" style="color:#374151;"><i class="bi bi-layers me-2 text-success"></i>Fermalar va dalalar</h6>
+    <a href="{% url 'farm-list' %}" class="btn btn-sm btn-outline-success">Barchasini ko'rish</a>
+</div>
+<div class="row g-3">
+    {% for farm in farms %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-semibold" style="font-size:0.875rem;">{{ farm.name }}</span>
+                    <span class="badge bg-secondary ms-2" style="font-size:0.68rem;font-weight:500;">{{ farm.get_region_display }}</span>
+                </div>
+                <a href="{% url 'farm-detail' farm.pk %}" class="btn btn-sm btn-outline-secondary" style="padding:0.2rem 0.55rem;">
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% with fields=farm.fields.all %}
+                {% if fields %}
+                    {% for field in fields|slice:":4" %}
+                    <a href="{% url 'field-monitoring' field.pk %}" class="farm-item">
+                        <div>
+                            <div class="fw-medium" style="font-size:0.855rem;">{{ field.name }}</div>
+                            <div class="text-muted" style="font-size:0.75rem;">{{ field.get_crop_type_display }} · {{ field.area }} ga</div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            {% with m=field.current_moisture %}
+                            {% if m %}
+                            <div class="text-end">
+                                <div style="font-size:0.78rem;font-weight:600;color:#16a34a;">{{ m }}%</div>
+                                <div class="moisture-bar"><div class="moisture-fill" style="width:{{ m }}%;"></div></div>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                            {% if field.is_irrigating %}
+                            <span class="badge gc-blue" style="font-size:0.68rem;border-radius:20px;padding:0.3em 0.65em;">
+                                <i class="bi bi-droplet-fill me-1"></i>Sug'orish
+                            </span>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% endfor %}
+                    {% if fields.count > 4 %}
+                    <div class="text-center py-2" style="font-size:0.78rem;color:#94a3b8;border-top:1px solid #f1f5f9;">
+                        +{{ fields.count|add:"-4" }} ta dala yana
+                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="empty-state py-3">
+                    <p class="text-center mb-0" style="font-size:0.82rem;">Hali dala qo'shilmagan</p>
+                </div>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const map = L.map('dashboard-map', { zoomControl: true }).setView([41.3, 64.5], 6);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 18
+}).addTo(map);
+
+const farms = [
+    {% for farm in farms %}
+    {
+        lat: {{ farm.lat|default:41.3 }},
+        lon: {{ farm.lon|default:64.5 }},
+        name: "{{ farm.name|escapejs }}",
+        region: "{{ farm.get_region_display|escapejs }}",
+        url: "{% url 'farm-detail' farm.pk %}",
+        fields: {{ farm.total_fields }},
+        area: {{ farm.total_area|default:0 }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+farms.forEach(f => {
+    if (!f.lat || !f.lon) return;
+    const icon = L.divIcon({
+        html: `<div style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 3px 10px rgba(22,163,74,0.4);display:flex;align-items:center;gap:5px;"><i class="bi bi-layers" style="font-size:10px;"></i>${f.name}</div>`,
+        className: '',
+        iconAnchor: [0, 0]
+    });
+    L.marker([f.lat, f.lon], { icon })
+        .addTo(map)
+        .bindPopup(`<div style="font-family:Inter,sans-serif;min-width:140px;"><div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;">${f.name}</div><div style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">${f.region} · ${f.fields} ta dala · ${f.area} ga</div><a href="${f.url}" style="display:block;text-align:center;background:#16a34a;color:#fff;padding:4px 10px;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:500;">Ko'rish →</a></div>`, { maxWidth: 200 });
+});
+</script>
+{% endblock %}

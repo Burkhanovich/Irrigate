@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}{{ sensor.device_id }} — Sensor{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'sensor-list' sensor.field.pk %}">Sensorlar</a> / {{ sensor.device_id }}
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-cpu me-2 text-success"></i>{{ sensor.name|default:sensor.device_id }}</h4>
+        <small class="text-muted">{{ sensor.get_sensor_type_display }} — {{ sensor.field.name }}</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'sensor-update' sensor.pk %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Tahrirlash
+        </a>
+        <a href="{% url 'sensor-delete' sensor.pk %}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash me-1"></i>O'chirish
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white"><h6 class="mb-0">Sensor ma'lumotlari</h6></div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-5 text-muted">Device ID:</dt>
+                    <dd class="col-7 font-monospace small">{{ sensor.device_id }}</dd>
+                    <dt class="col-5 text-muted">Tur:</dt>
+                    <dd class="col-7">{{ sensor.get_sensor_type_display }}</dd>
+                    <dt class="col-5 text-muted">Holat:</dt>
+                    <dd class="col-7">
+                        <span class="badge {% if sensor.status == 'online' %}bg-success{% elif sensor.status == 'offline' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ sensor.get_status_display }}
+                        </span>
+                    </dd>
+                    <dt class="col-5 text-muted">So'nggi:</dt>
+                    <dd class="col-7">{{ sensor.last_seen|date:"d.m.Y H:i"|default:"—" }}</dd>
+                    <dt class="col-5 text-muted">Firmware:</dt>
+                    <dd class="col-7">{{ sensor.firmware_ver|default:"—" }}</dd>
+                    <dt class="col-5 text-muted">Birlik:</dt>
+                    <dd class="col-7">{{ sensor.unit|default:"—" }}</dd>
+                    <dt class="col-5 text-muted">Pastki:</dt>
+                    <dd class="col-7">{{ sensor.low_threshold|default:"—" }}</dd>
+                    <dt class="col-5 text-muted">Yuqori:</dt>
+                    <dd class="col-7">{{ sensor.high_threshold|default:"—" }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        {% if latest %}
+        <div class="card border-0 shadow-sm text-center p-4">
+            <div class="fs-1 fw-bold text-success">{{ latest.value }}</div>
+            <div class="text-muted">{{ latest.unit }}</div>
+            <small class="text-muted">{{ latest.timestamp|date:"d.m.Y H:i" }}</small>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-8">
+        <!-- 7 kunlik grafik -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">So'nggi 7 kunlik grafik</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="sensorChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <!-- Oxirgi o'lchovlar -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white"><h6 class="mb-0">Oxirgi o'lchovlar</h6></div>
+            <div class="card-body p-0">
+                {% if recent_readings %}
+                <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Vaqt</th>
+                                <th>Qiymat</th>
+                                <th>Birlik</th>
+                                <th>Sifat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in recent_readings %}
+                            <tr>
+                                <td class="small">{{ r.timestamp|date:"d.m.Y H:i:s" }}</td>
+                                <td class="fw-semibold">{{ r.value }}</td>
+                                <td class="text-muted small">{{ r.unit }}</td>
+                                <td>
+                                    <div class="progress" style="height:4px; width:50px;">
+                                        <div class="progress-bar bg-success" style="width:{{ r.quality }}%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">O'lchov ma'lumotlari yo'q</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const sensorId = {{ sensor.pk }};
+const ctx = document.getElementById('sensorChart').getContext('2d');
+
+fetch(`/sensors/${sensorId}/readings.json?limit=200`)
+    .then(r => r.json())
+    .then(data => {
+        const readings = data.readings.reverse();
+        const labels = readings.map(r => {
+            const d = new Date(r.timestamp);
+            return d.toLocaleDateString('uz-UZ') + ' ' + d.toLocaleTimeString('uz-UZ', {hour:'2-digit', minute:'2-digit'});
+        });
+        const values = readings.map(r => r.value);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '{{ sensor.get_sensor_type_display }}',
+                    data: values,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25,135,84,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 10 } },
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

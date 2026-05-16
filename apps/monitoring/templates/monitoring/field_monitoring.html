@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+{% load monitoring_tags %}
+
+{% block title %}{{ field.name }} — Monitoring{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'farm-detail' field.farm.pk %}">{{ field.farm.name }}</a>
+<span class="sep">/</span>
+<a href="{% url 'field-detail' field.pk %}">{{ field.name }}</a>
+<span class="sep">/</span>Monitoring
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.sensor-card {
+    border-radius: 12px !important;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.sensor-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.09) !important; }
+.sensor-val { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.sensor-type-lbl { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; }
+
+.ws-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 0.25rem 0.7rem; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 600;
+}
+.irr-bar {
+    border-radius: 12px !important;
+    border: none !important;
+    overflow: hidden;
+}
+.irr-bar.active { box-shadow: 0 4px 20px rgba(22,163,74,0.3) !important; }
+.chart-card { border-radius: 12px !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1">
+            <i class="bi bi-activity me-2 text-success"></i>{{ field.name }}
+            <span class="badge ms-1" style="background:rgba(22,163,74,0.12);color:#16a34a;font-size:0.6rem;vertical-align:middle;border-radius:20px;">REAL VAQT</span>
+        </h4>
+        <div class="text-muted" style="font-size:0.82rem;">
+            {{ field.get_crop_type_display }} &mdash; {{ field.area }} ga &mdash; {{ field.get_irr_method_display }}
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'control-panel' field.pk %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-sliders me-1"></i>Boshqarish
+        </a>
+        <span id="ws-status" class="ws-pill" style="background:#f1f5f9;color:#94a3b8;">
+            <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span>
+            Ulanmoqda...
+        </span>
+    </div>
+</div>
+
+<!-- Irrigation status bar -->
+<div class="card irr-bar mb-4 {% if active_event %}active gc-green{% else %}{% endif %}">
+    <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                {% if active_event %}
+                <div class="irrigating-pulse rounded-circle d-flex align-items-center justify-content-center"
+                     style="width:46px;height:46px;background:rgba(255,255,255,0.2);">
+                    <i class="bi bi-droplet-fill text-white fs-5"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-white">Sug'orilmoqda</div>
+                    <div class="text-white" style="font-size:0.78rem;opacity:0.8;">
+                        {{ active_event.started_at|date:"H:i" }} dan boshlangan &nbsp;&bull;&nbsp;
+                        <span id="elapsed">—</span> o'tdi
+                    </div>
+                </div>
+                {% else %}
+                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                     style="width:46px;height:46px;background:#f1f5f9;">
+                    <i class="bi bi-droplet text-muted fs-5"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold text-muted">Sug'orish to'xtatilgan</div>
+                    <div class="text-muted" style="font-size:0.78rem;">Boshqaruv panelidan ishga tushiring</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex gap-2 align-items-center">
+                {% if not active_event %}
+                <div class="input-group input-group-sm" style="width:130px;">
+                    <input type="number" id="quick-duration" class="form-control" value="30" min="1" max="480">
+                    <span class="input-group-text">min</span>
+                </div>
+                <button class="btn btn-success btn-sm px-3" id="quick-start">
+                    <i class="bi bi-play-fill me-1"></i>Boshlash
+                </button>
+                {% else %}
+                <button class="btn btn-sm px-3" id="quick-stop"
+                        data-event="{{ active_event.pk }}"
+                        style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:#fff;">
+                    <i class="bi bi-stop-fill me-1"></i>To'xtatish
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sensor cards -->
+<div class="row g-3 mb-4">
+    {% for sensor in sensors %}
+    {% with reading=latest_readings|get_item:sensor.sensor_type %}
+    <div class="col-6 col-md-4 col-xl-2" id="sensor-card-{{ sensor.pk }}">
+        <div class="card sensor-card text-center h-100">
+            <div class="card-body p-3">
+                <div class="sensor-type-lbl mb-2">{{ sensor.get_sensor_type_display }}</div>
+                <div class="sensor-val text-success mb-0" id="val-{{ sensor.pk }}">
+                    {% if reading %}{{ reading.value|floatformat:1 }}{% else %}—{% endif %}
+                </div>
+                <div class="text-muted mb-2" style="font-size:0.78rem;">{{ sensor.unit }}</div>
+                <span class="badge {% if sensor.status == 'online' %}bg-success{% else %}bg-danger{% endif %}"
+                      style="font-size:0.65rem;border-radius:20px;">
+                    {% if sensor.status == 'online' %}<i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i>{% endif %}
+                    {{ sensor.get_status_display }}
+                </span>
+                {% if reading and sensor.high_threshold %}
+                <div class="mt-2" style="height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;">
+                    {% with pct=reading.value %}
+                    <div style="width:{% widthratio reading.value sensor.high_threshold 100 %}%;height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:2px;"></div>
+                    {% endwith %}
+                </div>
+                {% endif %}
+                <div class="mt-2">
+                    <canvas id="sparkline-{{ sensor.pk }}" height="35"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+
+<!-- Charts -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card chart-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold" style="font-size:0.875rem;"><i class="bi bi-moisture me-2 text-success"></i>Tuproq namligi (so'nggi 24 soat)</span>
+            </div>
+            <div class="card-body" style="padding:1rem 1.25rem;">
+                <canvas id="moistureChart" height="90"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card chart-card h-100">
+            <div class="card-header">
+                <span class="fw-semibold" style="font-size:0.875rem;"><i class="bi bi-thermometer-half me-2 text-warning"></i>Harorat</span>
+            </div>
+            <div class="card-body" style="padding:1rem 1.25rem;">
+                <canvas id="tempChart" style="max-height:190px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedules -->
+{% if schedules %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold" style="font-size:0.875rem;"><i class="bi bi-clock me-2 text-primary"></i>Faol jadvallar</span>
+        <a href="{% url 'schedule-list' field.pk %}" class="btn btn-sm btn-outline-secondary">Barchasi</a>
+    </div>
+    <div class="card-body p-0">
+        {% for s in schedules %}
+        <div class="d-flex justify-content-between align-items-center px-4 py-3
+            {% if not forloop.last %}border-bottom{% endif %}" style="border-color:#f1f5f9!important;">
+            <div>
+                <div class="fw-semibold" style="font-size:0.875rem;">{{ s.name }}</div>
+                <div class="text-muted" style="font-size:0.75rem;">
+                    {{ s.get_trigger_type_display }}
+                    {% if s.start_time %} · {{ s.start_time|time:"H:i" }}{% endif %}
+                    {% if s.duration_min %} · {{ s.duration_min }} min{% endif %}
+                </div>
+            </div>
+            <span class="badge" style="background:#f0fdf4;color:#16a34a;font-size:0.72rem;">Faol</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const fieldId = {{ field.pk }};
+const maxPoints = 288;
+
+// Chart.js default font
+Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#94a3b8';
+
+// WebSocket
+let ws = null;
+function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${location.host}/ws/field/${fieldId}/`);
+    const statusEl = document.getElementById('ws-status');
+
+    ws.onopen = () => {
+        if (statusEl) {
+            statusEl.style.background = 'rgba(22,163,74,0.1)';
+            statusEl.style.color = '#16a34a';
+            statusEl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span> Ulandi';
+        }
+    };
+    ws.onclose = () => {
+        if (statusEl) {
+            statusEl.style.background = 'rgba(245,158,11,0.1)';
+            statusEl.style.color = '#d97706';
+            statusEl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span> Uzildi';
+        }
+        setTimeout(connectWS, 3000);
+    };
+    ws.onmessage = e => {
+        const d = JSON.parse(e.data);
+        if (d.type === 'sensor_reading') updateSensor(d);
+        else if (d.type === 'irrigation_status') {
+            if (d.status === 'started' || d.status === 'stopped') location.reload();
+        }
+    };
+    setInterval(() => { if (ws.readyState === 1) ws.send(JSON.stringify({type:'ping'})); }, 30000);
+}
+connectWS();
+
+function updateSensor(data) {
+    const el = document.getElementById(`val-${data.sensor_id}`);
+    if (el) el.textContent = parseFloat(data.value).toFixed(1);
+    if (moistureChart && data.sensor_type === 'soil_moisture') {
+        pushPoint(moistureChart, fmtTime(new Date()), data.value);
+    }
+}
+
+function fmtTime(d) {
+    return d.toLocaleTimeString('uz-UZ', {hour:'2-digit',minute:'2-digit'});
+}
+
+function pushPoint(chart, label, value) {
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(parseFloat(value));
+    if (chart.data.labels.length > maxPoints) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update('none');
+}
+
+// Moisture chart
+const moistureChart = new Chart(document.getElementById('moistureChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{
+        label: 'Tuproq namligi (%)',
+        data: [],
+        borderColor: '#16a34a',
+        backgroundColor: 'rgba(22,163,74,0.08)',
+        fill: true, tension: 0.4, pointRadius: 1.5,
+        borderWidth: 2
+    }]},
+    options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+            y: { min: 0, max: 100, grid: { color: '#f1f5f9' },
+                 ticks: { callback: v => v + '%' } }
+        }
+    }
+});
+
+// Load moisture history
+{% for sensor in sensors %}
+{% if sensor.sensor_type == 'soil_moisture' %}
+fetch(`/sensors/{{ sensor.pk }}/readings.json?limit=288`)
+    .then(r => r.json())
+    .then(d => {
+        d.readings.reverse().forEach(r => {
+            pushPoint(moistureChart, fmtTime(new Date(r.timestamp)), r.value);
+        });
+    });
+{% endif %}
+{% endfor %}
+
+// Temp chart
+const tempChart = new Chart(document.getElementById('tempChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{
+        label: 'Harorat (°C)',
+        data: [],
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.08)',
+        fill: true, tension: 0.4, pointRadius: 1.5,
+        borderWidth: 2
+    }]},
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 5 } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '°' } }
+        }
+    }
+});
+
+{% for sensor in sensors %}
+{% if sensor.sensor_type == 'air_temp' or sensor.sensor_type == 'soil_temp' %}
+fetch(`/sensors/{{ sensor.pk }}/readings.json?limit=100`)
+    .then(r => r.json())
+    .then(d => {
+        d.readings.reverse().forEach(r => {
+            pushPoint(tempChart, fmtTime(new Date(r.timestamp)), r.value);
+        });
+    });
+{% endif %}
+{% endfor %}
+
+// Elapsed timer
+{% if active_event %}
+const startedAt = new Date('{{ active_event.started_at.isoformat }}');
+setInterval(() => {
+    const diff = Math.floor((new Date() - startedAt) / 1000);
+    const h = Math.floor(diff/3600);
+    const m = Math.floor((diff%3600)/60);
+    const s = diff % 60;
+    const txt = h > 0
+        ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+        : `${m}:${String(s).padStart(2,'0')}`;
+    const el = document.getElementById('elapsed');
+    if (el) el.textContent = txt;
+}, 1000);
+{% endif %}
+
+// Quick start
+{% if not active_event %}
+document.getElementById('quick-start')?.addEventListener('click', async function() {
+    const dur = document.getElementById('quick-duration').value;
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>...';
+    const res = await fetch(`/irrigation/field/${fieldId}/start/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `duration_min=${dur}`
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+        showToast("Sug'orish boshlandi!", 'success');
+        setTimeout(() => location.reload(), 1200);
+    } else {
+        showToast('Xatolik: ' + (data.error || 'Noma\'lum'), 'danger');
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-play-fill me-1"></i>Boshlash';
+    }
+});
+{% endif %}
+
+// Quick stop
+{% if active_event %}
+document.getElementById('quick-stop')?.addEventListener('click', async function() {
+    const eventId = this.dataset.event;
+    this.disabled = true;
+    const res = await fetch(`/irrigation/event/${eventId}/stop/`, {
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+        showToast("Sug'orish to'xtatildi", 'success');
+        setTimeout(() => location.reload(), 1200);
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

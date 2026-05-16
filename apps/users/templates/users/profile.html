@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Profil — IrriGate{% endblock %}
+
+{% block breadcrumb %}Profil{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-person-circle me-2 text-success"></i>Mening Profilim</h4>
+        <small class="text-muted">Shaxsiy ma'lumotlarni tahrirlash</small>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center p-4">
+            {% if user.avatar %}
+            <img src="{{ user.avatar.url }}" class="rounded-circle mx-auto mb-3"
+                 style="width:100px;height:100px;object-fit:cover;" alt="Avatar">
+            {% else %}
+            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center mx-auto mb-3"
+                 style="width:100px;height:100px;font-size:2.5rem;">
+                {{ user.full_name|first|upper }}
+            </div>
+            {% endif %}
+            <h5 class="mb-1">{{ user.full_name|default:user.username }}</h5>
+            <span class="badge bg-success">{{ user.get_role_display }}</span>
+            <hr>
+            <div class="text-start small text-muted">
+                <p class="mb-1"><i class="bi bi-envelope me-2"></i>{{ user.email|default:"—" }}</p>
+                <p class="mb-1"><i class="bi bi-telephone me-2"></i>{{ user.phone|default:"—" }}</p>
+                <p class="mb-0"><i class="bi bi-calendar me-2"></i>{{ user.date_joined|date:"d.m.Y" }} dan beri</p>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body">
+                <h6 class="mb-3">Statistika</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Fermalar:</span>
+                    <strong>{{ user.farms.count }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h6 class="mb-0"><i class="bi bi-pencil me-2"></i>Ma'lumotlarni tahrirlash</h6>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">To'liq ism</label>
+                        {{ form.full_name }}
+                        {% if form.full_name.errors %}
+                        <div class="text-danger small">{{ form.full_name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                        <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Telefon</label>
+                        {{ form.phone }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Avatar</label>
+                        {{ form.avatar }}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-2"></i>Saqlash
+                        </button>
+                        <a href="{% url 'change-password' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-key me-2"></i>Parol o'zgartirish
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

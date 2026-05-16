@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title|default:"Ferma" }} — IrriGate{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'farm-list' %}">Fermalar</a>
+<span class="sep">/</span>{{ title|default:"Yangi ferma" }}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h4 class="mb-0"><i class="bi bi-tree me-2 text-success"></i>{{ title|default:"Yangi ferma" }}</h4>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Ferma nomi <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger" style="font-size:0.8rem;margin-top:4px;">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Viloyat <span class="text-danger">*</span></label>
+                            {{ form.region }}
+                            {% if form.region.errors %}<div class="text-danger" style="font-size:0.8rem;margin-top:4px;">{{ form.region.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tuman <span class="text-danger">*</span></label>
+                            {{ form.district }}
+                            {% if form.district.errors %}<div class="text-danger" style="font-size:0.8rem;margin-top:4px;">{{ form.district.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Kenglik (Lat)</label>
+                            {{ form.lat }}
+                            {% if form.lat.errors %}<div class="text-danger" style="font-size:0.8rem;margin-top:4px;">{{ form.lat.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Uzunlik (Lon)</label>
+                            {{ form.lon }}
+                            {% if form.lon.errors %}<div class="text-danger" style="font-size:0.8rem;margin-top:4px;">{{ form.lon.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Jami maydon (ga) <span class="text-danger">*</span></label>
+                            {{ form.total_area }}
+                            {% if form.total_area.errors %}<div class="text-danger" style="font-size:0.8rem;margin-top:4px;">{{ form.total_area.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Tavsif</label>
+                        {{ form.description }}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger border-0" style="background:rgba(239,68,68,0.08);color:#b91c1c;border-radius:8px;font-size:0.85rem;">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2 pt-2">
+                        <button type="submit" class="btn btn-success px-4">
+                            <i class="bi bi-check-lg me-2"></i>Saqlash
+                        </button>
+                        <a href="{% url 'farm-list' %}" class="btn btn-outline-secondary px-4">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

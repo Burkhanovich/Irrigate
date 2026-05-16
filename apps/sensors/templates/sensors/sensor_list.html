@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}{{ field.name }} — Sensorlar{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'field-detail' field.pk %}">{{ field.name }}</a>
+<span class="sep">/</span>Sensorlar
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.sensor-type-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; flex-shrink: 0;
+}
+.sensor-card { transition: transform 0.2s, box-shadow 0.2s; }
+.sensor-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.09) !important; }
+.reading-val { font-size: 2rem; font-weight: 700; line-height: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-cpu me-2 text-success"></i>Sensorlar</h4>
+        <div class="text-muted" style="font-size:0.82rem;">{{ field.name }} — {{ sensors.count }} ta sensor</div>
+    </div>
+    <a href="{% url 'sensor-create' field.pk %}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i>Yangi Sensor
+    </a>
+</div>
+
+{% if sensors %}
+<div class="row g-3">
+    {% for sensor in sensors %}
+    {% with reading=sensor.latest_reading %}
+    <div class="col-md-6 col-xl-4">
+        <div class="card sensor-card h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="sensor-type-icon
+                            {% if sensor.sensor_type == 'soil_moisture' %}bg-success bg-opacity-10{% elif sensor.sensor_type == 'air_temp' or sensor.sensor_type == 'soil_temp' %}bg-warning bg-opacity-10{% elif sensor.sensor_type == 'flow_meter' %}bg-info bg-opacity-10{% else %}bg-primary bg-opacity-10{% endif %}">
+                            {% if sensor.sensor_type == 'soil_moisture' %}<i class="bi bi-moisture text-success"></i>
+                            {% elif sensor.sensor_type == 'air_temp' %}<i class="bi bi-thermometer text-warning"></i>
+                            {% elif sensor.sensor_type == 'soil_temp' %}<i class="bi bi-thermometer-half text-orange" style="color:#f97316;"></i>
+                            {% elif sensor.sensor_type == 'flow_meter' %}<i class="bi bi-water text-info"></i>
+                            {% elif sensor.sensor_type == 'rain_gauge' %}<i class="bi bi-cloud-rain text-primary"></i>
+                            {% elif sensor.sensor_type == 'wind_speed' %}<i class="bi bi-wind text-secondary"></i>
+                            {% else %}<i class="bi bi-cpu text-muted"></i>{% endif %}
+                        </div>
+                        <div>
+                            <div class="fw-semibold" style="font-size:0.875rem;">{{ sensor.name|default:sensor.device_id }}</div>
+                            <div class="text-muted" style="font-size:0.75rem;">{{ sensor.get_sensor_type_display }}</div>
+                        </div>
+                    </div>
+                    <span class="badge
+                        {% if sensor.status == 'online' %}bg-success
+                        {% elif sensor.status == 'offline' %}bg-danger
+                        {% else %}bg-warning text-dark{% endif %}"
+                        style="border-radius:20px;font-size:0.68rem;">
+                        {% if sensor.status == 'online' %}<i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i>{% endif %}
+                        {{ sensor.get_status_display }}
+                    </span>
+                </div>
+
+                {% if reading %}
+                <div class="text-center my-3 py-2" style="background:#f8fafc;border-radius:10px;">
+                    <div class="reading-val text-success">{{ reading.value|floatformat:1 }}</div>
+                    <div class="text-muted" style="font-size:0.8rem;">{{ reading.unit }}</div>
+                    <div style="font-size:0.72rem;color:#cbd5e1;margin-top:3px;">{{ reading.timestamp|date:"d.m H:i" }}</div>
+                </div>
+                {% if sensor.high_threshold %}
+                <div style="height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:0.75rem;">
+                    <div style="width:{% widthratio reading.value sensor.high_threshold 100 %}%;height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:3px;"></div>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center text-muted my-3 py-3" style="background:#f8fafc;border-radius:10px;font-size:0.82rem;">
+                    <i class="bi bi-dash-circle me-1"></i>Ma'lumot yo'q
+                </div>
+                {% endif %}
+
+                <div class="text-label mt-2">Device ID</div>
+                <div class="font-monospace" style="font-size:0.78rem;color:#64748b;">{{ sensor.device_id }}</div>
+            </div>
+            <div class="card-footer bg-white border-top d-flex gap-2 p-3" style="border-color:#f1f5f9!important;">
+                <a href="{% url 'sensor-detail' sensor.pk %}" class="btn btn-sm btn-outline-success flex-fill">
+                    <i class="bi bi-graph-up me-1"></i>Grafik
+                </a>
+                <a href="{% url 'sensor-update' sensor.pk %}" class="btn btn-sm btn-outline-secondary" style="padding:0.3rem 0.65rem;">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <a href="{% url 'sensor-delete' sensor.pk %}" class="btn btn-sm btn-outline-danger" style="padding:0.3rem 0.65rem;">
+                    <i class="bi bi-trash"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="card border-0">
+    <div class="empty-state" style="padding:5rem 2rem;">
+        <div style="width:72px;height:72px;background:#f1f5f9;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:2rem;color:#cbd5e1;">
+            <i class="bi bi-cpu"></i>
+        </div>
+        <h5 class="fw-semibold" style="color:#374151;">Hali sensor qo'shilmagan</h5>
+        <p class="text-muted">Sensor qo'shing va real vaqtda ma'lumot oling</p>
+        <a href="{% url 'sensor-create' field.pk %}" class="btn btn-success">
+            <i class="bi bi-plus-lg me-1"></i>Sensor qo'shish
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

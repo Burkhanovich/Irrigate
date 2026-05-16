@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Fermalarim — IrriGate{% endblock %}
+{% block breadcrumb %}Fermalar{% endblock %}
+
+{% block extra_css %}
+<style>
+.farm-card { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+.farm-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important; }
+.farm-header-band {
+    background: linear-gradient(135deg, #15803d, #22c55e);
+    padding: 1.25rem 1.25rem 2.5rem;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+    overflow: hidden;
+}
+.farm-header-band::after {
+    content: '';
+    position: absolute;
+    right: -20px; top: -20px;
+    width: 100px; height: 100px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 50%;
+}
+.farm-header-band .farm-icon {
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; color: #fff;
+}
+.farm-body {
+    padding: 0 1.25rem;
+    margin-top: -1.25rem;
+    position: relative; z-index: 1;
+}
+.farm-stat-strip {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    display: flex; gap: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.farm-stat { text-align: center; flex: 1; }
+.farm-stat .val { font-size: 1.2rem; font-weight: 700; color: #1e293b; line-height: 1; }
+.farm-stat .lbl { font-size: 0.68rem; color: #94a3b8; margin-top: 2px; font-weight: 500; }
+.farm-stat + .farm-stat { border-left: 1px solid #f1f5f9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-layers me-2 text-success"></i>Mening Fermalarim</h4>
+        <div class="text-muted" style="font-size:0.82rem;">Jami {{ farms.count }} ta ferma boshqarilmoqda</div>
+    </div>
+    <a href="{% url 'farm-create' %}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i>Yangi Ferma
+    </a>
+</div>
+
+{% if farms %}
+<div class="row g-4">
+    {% for farm in farms %}
+    <div class="col-sm-6 col-xl-4">
+        <div class="card border-0 farm-card h-100" style="overflow:hidden;">
+            <!-- Gradient header -->
+            <div class="farm-header-band">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="farm-icon">
+                        <i class="bi bi-tree"></i>
+                    </div>
+                    <div class="dropdown" onclick="event.stopPropagation()">
+                        <button class="btn btn-sm" data-bs-toggle="dropdown"
+                                style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.2);padding:0.25rem 0.55rem;">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" style="border:1px solid #e2e8f0;border-radius:10px;">
+                            <li><a class="dropdown-item" href="{% url 'farm-detail' farm.pk %}">
+                                <i class="bi bi-eye me-2 text-success"></i>Ko'rish</a></li>
+                            <li><a class="dropdown-item" href="{% url 'farm-update' farm.pk %}">
+                                <i class="bi bi-pencil me-2 text-primary"></i>Tahrirlash</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'farm-delete' farm.pk %}">
+                                <i class="bi bi-trash me-2"></i>O'chirish</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-2" style="color:#fff;">
+                    <div style="font-size:1.05rem;font-weight:700;letter-spacing:-0.2px;">{{ farm.name }}</div>
+                    <div style="font-size:0.78rem;opacity:0.75;margin-top:2px;">
+                        <i class="bi bi-geo-alt me-1"></i>{{ farm.get_region_display }}, {{ farm.district }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats strip (overlapping) -->
+            <div class="farm-body mt-0" style="margin-top:-1rem;padding:0 1rem;">
+                <div class="farm-stat-strip">
+                    <div class="farm-stat">
+                        <div class="val text-success">{{ farm.total_area }}</div>
+                        <div class="lbl">Gektar</div>
+                    </div>
+                    <div class="farm-stat">
+                        <div class="val text-primary">{{ farm.total_fields }}</div>
+                        <div class="lbl">Dalalar</div>
+                    </div>
+                    <div class="farm-stat">
+                        <div class="val text-warning">{{ farm.created_at|date:"Y" }}</div>
+                        <div class="lbl">Yil</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fields preview -->
+            {% with fields=farm.fields.all %}
+            <div class="card-body pt-3 pb-2 px-4">
+                {% if fields %}
+                <div class="text-label mb-2">Dalalar</div>
+                {% for field in fields|slice:":3" %}
+                <div class="d-flex align-items-center justify-content-between py-1" style="border-bottom:1px solid #f8fafc;">
+                    <div style="font-size:0.82rem;font-weight:500;">{{ field.name }}</div>
+                    <div class="d-flex align-items-center gap-1">
+                        {% if field.is_irrigating %}
+                        <span class="badge" style="background:rgba(37,99,235,0.1);color:#2563eb;font-size:0.68rem;border-radius:20px;">
+                            <i class="bi bi-droplet-fill me-1"></i>Sug'orish
+                        </span>
+                        {% endif %}
+                        <span class="badge bg-light text-muted" style="font-size:0.68rem;">{{ field.area }} ga</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if fields.count > 3 %}
+                <div style="font-size:0.75rem;color:#94a3b8;padding-top:0.4rem;">+{{ fields.count|add:"-3" }} ta dala yana...</div>
+                {% endif %}
+                {% else %}
+                <div class="text-muted text-center py-2" style="font-size:0.8rem;">Hali dala qo'shilmagan</div>
+                {% endif %}
+            </div>
+            {% endwith %}
+
+            <div class="card-footer bg-white border-top-0 px-4 pb-3">
+                <a href="{% url 'farm-detail' farm.pk %}" class="btn btn-outline-success btn-sm w-100">
+                    Batafsil ko'rish <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="card border-0" style="border-radius:16px!important;">
+    <div class="empty-state" style="padding:5rem 2rem;">
+        <div style="width:80px;height:80px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:2.25rem;">🌱</div>
+        <h5 class="fw-semibold" style="color:#374151;">Hali ferma qo'shilmagan</h5>
+        <p class="text-muted mb-4">Birinchi fermaingizni qo'shing va sug'orishni boshqaring</p>
+        <a href="{% url 'farm-create' %}" class="btn btn-success btn-lg px-4">
+            <i class="bi bi-plus-lg me-2"></i>Ferma qo'shish
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

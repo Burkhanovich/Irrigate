@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}{{ field.name }} — IrriGate{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'farm-list' %}">Fermalar</a> /
+<a href="{% url 'farm-detail' field.farm.pk %}">{{ field.farm.name }}</a> /
+{{ field.name }}
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-grid me-2 text-success"></i>{{ field.name }}</h4>
+        <small class="text-muted">{{ field.farm.name }} — {{ field.get_crop_type_display }}</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'field-monitoring' field.pk %}" class="btn btn-success btn-sm">
+            <i class="bi bi-activity me-1"></i>Monitoring
+        </a>
+        <a href="{% url 'control-panel' field.pk %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-sliders me-1"></i>Boshqarish
+        </a>
+        <a href="{% url 'field-update' field.pk %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pencil"></i>
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Field info -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white"><h6 class="mb-0">Dala ma'lumotlari</h6></div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-5 text-muted">Maydon:</dt>
+                    <dd class="col-7">{{ field.area }} ga</dd>
+                    <dt class="col-5 text-muted">Ekin:</dt>
+                    <dd class="col-7">{{ field.get_crop_type_display }}</dd>
+                    <dt class="col-5 text-muted">Sug'orish:</dt>
+                    <dd class="col-7">{{ field.get_irr_method_display }}</dd>
+                    <dt class="col-5 text-muted">Tuproq:</dt>
+                    <dd class="col-7">{{ field.get_soil_type_display|default:"—" }}</dd>
+                    <dt class="col-5 text-muted">Kc:</dt>
+                    <dd class="col-7">{{ field.kc_value }}</dd>
+                    <dt class="col-5 text-muted">Ekish:</dt>
+                    <dd class="col-7">{{ field.planting_date|date:"d.m.Y"|default:"—" }}</dd>
+                    <dt class="col-5 text-muted">Hosil:</dt>
+                    <dd class="col-7">{{ field.harvest_date|date:"d.m.Y"|default:"—" }}</dd>
+                    <dt class="col-5 text-muted">Holat:</dt>
+                    <dd class="col-7">
+                        {% if is_irrigating %}
+                        <span class="badge bg-primary">Sug'orilmoqda</span>
+                        {% elif field.is_active %}
+                        <span class="badge bg-success">Faol</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Nofaol</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        {% if current_moisture %}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body text-center">
+                <div class="fs-1 fw-bold text-success">{{ current_moisture }}%</div>
+                <small class="text-muted">Joriy tuproq namligi</small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-8">
+        <!-- Sensors -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white d-flex justify-content-between">
+                <h6 class="mb-0"><i class="bi bi-cpu me-2"></i>Sensorlar</h6>
+                <a href="{% url 'sensor-create' field.pk %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus me-1"></i>Sensor qo'shish
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if sensors %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr><th>ID</th><th>Tur</th><th>Oxirgi qiymat</th><th>Holat</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            {% for sensor in sensors %}
+                            {% with reading=sensor.latest_reading %}
+                            <tr>
+                                <td class="small font-monospace">{{ sensor.device_id }}</td>
+                                <td class="small">{{ sensor.get_sensor_type_display }}</td>
+                                <td>
+                                    {% if reading %}
+                                    <strong>{{ reading.value }}</strong> {{ reading.unit }}
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if sensor.status == 'online' %}bg-success{% elif sensor.status == 'offline' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                        {{ sensor.get_status_display }}
+                                    </span>
+                                </td>
+                                <td><a href="{% url 'sensor-detail' sensor.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
+                            </tr>
+                            {% endwith %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted small">Sensor yo'q</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Active schedules -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white d-flex justify-content-between">
+                <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Faol jadvallar</h6>
+                <a href="{% url 'schedule-create' field.pk %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus me-1"></i>Jadval qo'shish
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if schedules %}
+                <ul class="list-group list-group-flush">
+                    {% for s in schedules %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-semibold">{{ s.name }}</span>
+                            <span class="text-muted small ms-2">{{ s.get_days_display }}</span>
+                            {% if s.start_time %}<span class="text-muted small ms-2">{{ s.start_time|time:"H:i" }}</span>{% endif %}
+                        </div>
+                        <span class="text-muted small">{{ s.duration_min }} min</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center py-3 text-muted small">Jadval yo'q</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent events -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>So'nggi sug'orishlar</h6>
+                <a href="{% url 'event-history' field.pk %}" class="btn btn-sm btn-outline-secondary">Barchasi</a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_events %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr><th>Vaqt</th><th>Sabab</th><th>Davomiylik</th><th>Suv (l)</th><th>Holat</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for event in recent_events %}
+                            <tr>
+                                <td class="small">{{ event.started_at|date:"d.m.Y H:i" }}</td>
+                                <td class="small">{{ event.get_trigger_type_display }}</td>
+                                <td class="small">{{ event.duration_display }}</td>
+                                <td class="small">{{ event.water_liters|default:"—" }}</td>
+                                <td>
+                                    <span class="badge {% if event.status == 'running' %}bg-primary{% elif event.status == 'completed' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ event.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted small">Hali sug'orish amalga oshirilmagan</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

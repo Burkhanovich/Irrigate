@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — IrriGate{% endblock %}
+{% block breadcrumb %}
+{% if farm %}<a href="{% url 'farm-detail' farm.pk %}">{{ farm.name }}</a>{% endif %} / {{ title }}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h4 class="mb-0"><i class="bi bi-grid me-2 text-success"></i>{{ title }}</h4>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Dala nomi <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Ekin turi <span class="text-danger">*</span></label>
+                            {{ form.crop_type }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Maydon (ga) <span class="text-danger">*</span></label>
+                            {{ form.area }}
+                            {% if form.area.errors %}<div class="text-danger small mt-1">{{ form.area.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Sug'orish usuli <span class="text-danger">*</span></label>
+                            {{ form.irr_method }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tuproq turi</label>
+                            {{ form.soil_type }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Ekish sanasi</label>
+                            {{ form.planting_date }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Hosilni yig'ish sanasi</label>
+                            {{ form.harvest_date }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ekin koeffitsienti (Kc)</label>
+                        {{ form.kc_value }}
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.is_active }}
+                            <label class="form-check-label">Faol dala</label>
+                        </div>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-2"></i>Saqlash
+                        </button>
+                        {% if farm %}
+                        <a href="{% url 'farm-detail' farm.pk %}" class="btn btn-outline-secondary">Bekor qilish</a>
+                        {% elif field %}
+                        <a href="{% url 'field-detail' field.pk %}" class="btn btn-outline-secondary">Bekor qilish</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

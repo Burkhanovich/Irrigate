@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Jadvallar — {{ field.name }}{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'field-detail' field.pk %}">{{ field.name }}</a>
+<span class="sep">/</span>Jadvallar
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-clock me-2 text-success"></i>Sug'orish Jadvallari</h4>
+        <div class="text-muted" style="font-size:0.82rem;">{{ field.name }}</div>
+    </div>
+    <a href="{% url 'schedule-create' field.pk %}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i>Yangi Jadval
+    </a>
+</div>
+
+{% if schedules %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Jadval nomi</th>
+                    <th>Tur</th>
+                    <th>Vaqt</th>
+                    <th>Davomiylik</th>
+                    <th>Holat</th>
+                    <th>Amallar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for schedule in schedules %}
+                <tr>
+                    <td class="fw-semibold">{{ schedule.name }}</td>
+                    <td class="text-muted">{{ schedule.get_trigger_type_display }}</td>
+                    <td>{{ schedule.start_time|time:"H:i"|default:"—" }}</td>
+                    <td>{{ schedule.duration_min }} min</td>
+                    <td>
+                        <span class="badge {% if schedule.is_active %}bg-success{% else %}bg-light text-muted{% endif %}"
+                              style="border-radius:20px;font-size:0.7rem;">
+                            {% if schedule.is_active %}Faol{% else %}Nofaol{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm toggle-btn"
+                                    data-url="{% url 'schedule-toggle' schedule.pk %}"
+                                    style="border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;padding:0.25rem 0.55rem;"
+                                    title="{% if schedule.is_active %}O'chirish{% else %}Yoqish{% endif %}">
+                                <i class="bi bi-toggle-{% if schedule.is_active %}on text-success{% else %}off{% endif %} fs-5"></i>
+                            </button>
+                            <a href="{% url 'schedule-update' schedule.pk %}" class="btn btn-sm btn-outline-primary" style="padding:0.25rem 0.55rem;">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'schedule-delete' schedule.pk %}" class="btn btn-sm btn-outline-danger" style="padding:0.25rem 0.55rem;">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+<div class="card border-0">
+    <div class="empty-state" style="padding:5rem 2rem;">
+        <div style="width:72px;height:72px;background:#f1f5f9;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:2rem;color:#cbd5e1;">
+            <i class="bi bi-clock"></i>
+        </div>
+        <h5 class="fw-semibold" style="color:#374151;">Jadval qo'shilmagan</h5>
+        <p class="text-muted">Avtomatik sug'orish uchun jadval yarating</p>
+        <a href="{% url 'schedule-create' field.pk %}" class="btn btn-success">
+            <i class="bi bi-plus-lg me-1"></i>Jadval qo'shish
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const res = await fetch(this.dataset.url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await res.json();
+        if (data.status === 'ok') location.reload();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}{{ farm.name }} — Dalalar{% endblock %}
+{% block breadcrumb %}<a href="{% url 'farm-list' %}">Fermalar</a> / <a href="{% url 'farm-detail' farm.pk %}">{{ farm.name }}</a> / Dalalar{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-grid me-2 text-success"></i>{{ farm.name }} — Dalalar</h4>
+        <small class="text-muted">Jami: {{ fields.count }} ta dala</small>
+    </div>
+    <a href="{% url 'field-create' farm.pk %}" class="btn btn-success">
+        <i class="bi bi-plus me-2"></i>Yangi Dala
+    </a>
+</div>
+
+{% if fields %}
+<div class="row g-4">
+    {% for field in fields %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="badge bg-success bg-opacity-10 text-success">{{ field.get_crop_type_display }}</span>
+                    {% if field.is_irrigating %}
+                    <span class="badge bg-primary"><i class="bi bi-droplet-fill me-1"></i>Sug'orilmoqda</span>
+                    {% endif %}
+                </div>
+                <h6 class="fw-bold">{{ field.name }}</h6>
+                <p class="text-muted small mb-2">
+                    <i class="bi bi-rulers me-1"></i>{{ field.area }} ga &nbsp;
+                    <i class="bi bi-water me-1"></i>{{ field.get_irr_method_display }}
+                </p>
+                {% with moisture=field.current_moisture %}
+                {% if moisture %}
+                <div class="progress mb-2" style="height:6px;">
+                    <div class="progress-bar bg-success" style="width:{{ moisture }}%"></div>
+                </div>
+                <small class="text-muted">Namlik: <strong>{{ moisture }}%</strong></small>
+                {% endif %}
+                {% endwith %}
+            </div>
+            <div class="card-footer bg-white border-0 d-flex gap-2">
+                <a href="{% url 'field-monitoring' field.pk %}" class="btn btn-success btn-sm flex-fill">
+                    <i class="bi bi-activity me-1"></i>Monitoring
+                </a>
+                <a href="{% url 'field-detail' field.pk %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-gear"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-grid fs-1 text-muted opacity-25"></i>
+    <p class="mt-3 text-muted">Hali dala qo'shilmagan</p>
+    <a href="{% url 'field-create' farm.pk %}" class="btn btn-success">Dala qo'shish</a>
+</div>
+{% endif %}
+{% endblock %}
