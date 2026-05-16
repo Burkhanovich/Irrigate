@@ -14,13 +14,3 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-
-# Logging to file in production
-import os
-_log_file = os.environ.get('LOG_FILE', '/var/log/irrigate/django.log')
-LOGGING['handlers']['file'] = {
-    'class': 'logging.FileHandler',
-    'filename': _log_file,
-    'formatter': 'verbose',
-}
-LOGGING['root']['handlers'] = ['console', 'file']
