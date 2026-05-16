@@ -24,3 +24,7 @@ CSRF_TRUSTED_ORIGINS = [
     f"{'https' if _use_https else 'http'}://{h.strip()}"
     for h in _hosts if h.strip()
 ]
+
+# Use a unique cookie name to avoid conflicts with any stale Secure cookies
+# that browsers may have cached from previous deployments
+CSRF_COOKIE_NAME = 'igate_csrf'
